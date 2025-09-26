@@ -1,35 +1,43 @@
 /** @format */
+
 "use client";
-import { useEffect, useState } from "react";
+
+import SystemHealth from "@/components/monitoring/SystemHealth";
+import SyncStatus from "@/components/monitoring/SyncStatus";
+import PerformanceMetrics from "@/components/monitoring/PerformanceMetrics";
+import ErrorLogs from "@/components/monitoring/ErrorLogs";
+import { useMonitoring } from "@/hooks/useMonitoring";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function MonitoringPage() {
-  const [s, setS] = useState<any>(null);
-  useEffect(() => {
-    fetch("/api/monitor/status", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(setS);
-  }, []);
+  const { data, loading, refresh } = useMonitoring();
+
+  if (loading) return <LoadingSpinner fullScreen />;
+
   return (
-    <main className='p-4 space-y-4'>
-      <h1 className='text-2xl font-bold'>Sync & Monitoring</h1>
-      {!s ? (
-        "กำลังโหลด…"
-      ) : (
-        <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-          <div className='p-4 rounded-2xl bg-white shadow border'>
-            Rows (Logs): <b>{s.sheets_rows}</b>
-          </div>
-          <div className='p-4 rounded-2xl bg-white shadow border'>
-            Sheets latency: <b>{s.latency_ms} ms</b>
-          </div>
-          <div className='p-4 rounded-2xl bg-white shadow border'>
-            /healthz:{" "}
-            <a className='underline' href='/api/healthz' target='_blank'>
-              ตรวจ
-            </a>
-          </div>
+    <div className='space-y-6'>
+      {/* Header */}
+      <div className='flex justify-between items-center'>
+        <div>
+          <h1 className='text-3xl font-bold text-[var(--nkt-text)]'>System Monitoring</h1>
+          <p className='text-[var(--nkt-muted)] mt-1'>ตรวจสอบสถานะระบบและประสิทธิภาพ</p>
         </div>
-      )}
-    </main>
+        <button
+          onClick={refresh}
+          className='px-4 py-2 bg-[var(--nkt-primary)] text-white rounded-lg hover:bg-[var(--nkt-primary-dark)] transition-colors'
+        >
+          <i className='fas fa-sync mr-2'></i>
+          Refresh
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        <SystemHealth data={data?.health} />
+        <SyncStatus data={data?.sync} />
+        <PerformanceMetrics data={data?.performance} />
+        <ErrorLogs logs={data?.errors} />
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 /** @format */
 
-import { driveGetFileReadable } from "@/lib/googleServer";
+import { driveGetFileReadable } from "@/lib/google";
+
 export const runtime = "nodejs";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ fileId: string }> }) {

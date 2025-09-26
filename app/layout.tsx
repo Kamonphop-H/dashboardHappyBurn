@@ -1,36 +1,51 @@
 /** @format */
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Sarabun } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/providers/Providers";
+import { Toaster } from "react-hot-toast";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const sarabun = Sarabun({
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["thai", "latin"],
+  variable: "--font-sarabun",
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard Happy Burn",
+  title: "Happy Burn Admin | โรงพยาบาลนครธน",
+  description: "ระบบจัดการและตรวจสอบข้อมูล Happy Burn Challenge",
+  keywords: ["admin", "dashboard", "happy burn", "นครธน", "โรงพยาบาล"],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
+    <html lang='th' className={`${inter.variable} ${sarabun.variable}`}>
       <head>
         <link
           rel='stylesheet'
-          href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css'
-          integrity='sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=='
+          href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
           crossOrigin='anonymous'
-          referrerPolicy='no-referrer'
         />
       </head>
-      <body className='antialiased overflow-x-hidden'>{children}</body>
+      <body className='font-sarabun antialiased bg-[var(--nkt-bg)]'>
+        <Providers>
+          {children}
+          <Toaster
+            position='top-right'
+            toastOptions={{
+              style: {
+                fontFamily: "var(--font-sarabun)",
+              },
+            }}
+          />
+        </Providers>
+      </body>
     </html>
   );
 }

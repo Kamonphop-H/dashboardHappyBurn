@@ -1,13 +1,8 @@
 /** @format */
 
-import Navbar from "@/components/navbar";
-import AdminSearchPage from "./admin/search/page";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className='min-h-dvh flex flex-col overflow-hidden'>
-      <Navbar />
-      <AdminSearchPage />
-    </div>
-  );
+  redirect("/admin/dashboard");
+  return null;
 }

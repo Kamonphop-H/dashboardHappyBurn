@@ -1,49 +1,107 @@
 /** @format */
-"use client";
-import { useEffect, useState } from "react";
 
-type Summary = {
-  totals: {
-    users_total: number;
-    users_active_today: number;
-    logs_today: number;
-    steps_today: number;
-    kcal_today: number;
-  };
-  data_quality: { new_rows_today: number; new_photos_today: number };
-  suspicious: { high: number; med: number; low: number; pending: number };
-  credits: { days_over_7000_today: number };
-};
+"use client";
+
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import StatsGrid from "@/components/dashboard/StatsGrid";
+import ActivityChart from "@/components/dashboard/ActivityChart";
+import RecentActivity from "@/components/dashboard/RecentActivity";
+import QuickActions from "@/components/dashboard/QuickActions";
+import DataQuality from "@/components/dashboard/DataQuality";
+import SuspiciousAlert from "@/components/dashboard/SuspiciousAlert";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 
 export default function DashboardPage() {
-  const [data, setData] = useState<Summary | null>(null);
-  useEffect(() => {
-    fetch("/api/dashboard/summary")
-      .then((r) => r.json())
-      .then(setData);
-  }, []);
-  if (!data) return <div className='p-4'>กำลังโหลด…</div>;
+  const { data, loading, error, refetch } = useDashboardData();
 
-  const Card = ({ title, value }: { title: string; value: any }) => (
-    <div className='p-4 rounded-2xl bg-white shadow border border-black/5'>
-      <div className='text-sm opacity-70'>{title}</div>
-      <div className='text-2xl font-bold mt-1'>{value}</div>
-    </div>
-  );
+  if (loading) return <LoadingSpinner fullScreen />;
+  if (error) return <ErrorBoundary error={error} retry={refetch} />;
+  if (!data) return null;
 
   return (
-    <main className='p-4 space-y-4'>
-      <h1 className='text-2xl font-bold'>Global Dashboard</h1>
-      <section className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-        <Card title='ผู้ใช้ทั้งหมด' value={data.totals.users_total} />
-        <Card title='Active วันนี้' value={data.totals.users_active_today} />
-        <Card title='Logs วันนี้' value={data.totals.logs_today} />
-        <Card title='ก้าวรวมวันนี้' value={data.totals.steps_today} />
-        <Card title='kcal รวมวันนี้' value={data.totals.kcal_today} />
-        <Card title='แถวใหม่วันนี้' value={data.data_quality.new_rows_today} />
-        <Card title='รูปใหม่วันนี้' value={data.data_quality.new_photos_today} />
-        <Card title='วัน ≥7,000 วันนี้' value={data.credits.days_over_7000_today} />
-      </section>
-    </main>
+    <ErrorBoundary>
+      <div className='space-y-6'>
+        {/* Header */}
+        <div className='flex justify-between items-center'>
+          <div>
+            <h1 className='text-3xl font-bold text-[var(--nkt-text)]'>Dashboard Overview</h1>
+            <p className='text-[var(--nkt-muted)] mt-1'>
+              ข้อมูล ณ วันที่{" "}
+              {new Date().toLocaleDateString("th-TH", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+          <button
+            onClick={refetch}
+            className='px-4 py-2 bg-[var(--nkt-primary)] text-white rounded-lg hover:bg-[var(--nkt-primary-dark)] transition-colors flex items-center gap-2'
+          >
+            <i className='fas fa-sync'></i>
+            รีเฟรชข้อมูล
+          </button>
+        </div>
+
+        {/* Stats Grid */}
+        <StatsGrid data={data.totals} />
+
+        {/* Suspicious Alert */}
+        {(data.suspicious.high > 0 || data.suspicious.med > 0) && (
+          <SuspiciousAlert suspicious={data.suspicious} />
+        )}
+
+        {/* Main Content Grid */}
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          <div className='lg:col-span-2'>
+            <ActivityChart data={data.weeklyData} />
+          </div>
+          <div>
+            <RecentActivity activities={data.recentActivity} />
+          </div>
+        </div>
+
+        {/* Bottom Grid */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+          <DataQuality data={data.data_quality} />
+          <QuickActions />
+          <div className='bg-white rounded-xl shadow-sm p-6 border border-[var(--nkt-border)]'>
+            <h3 className='text-lg font-semibold text-[var(--nkt-text)] mb-4'>System Status</h3>
+            <div className='space-y-3'>
+              <StatusItem label='API' status='online' />
+              <StatusItem label='Database' status='online' />
+              <StatusItem label='Sync' status='synced' />
+              <StatusItem label='Storage' status='85%' warning />
+            </div>
+          </div>
+        </div>
+      </div>
+    </ErrorBoundary>
+  );
+}
+
+function StatusItem({
+  label,
+  status,
+  warning = false,
+}: {
+  label: string;
+  status: string;
+  warning?: boolean;
+}) {
+  return (
+    <div className='flex justify-between items-center'>
+      <span className='text-[var(--nkt-muted)]'>{label}</span>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${
+          warning ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"
+        }`}
+      >
+        {status}
+      </span>
+    </div>
   );
 }

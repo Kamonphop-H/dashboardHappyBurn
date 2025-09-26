@@ -2,8 +2,6 @@
 import { google } from "googleapis";
 import crypto from "node:crypto";
 
-export const runtime = "nodejs";
-
 const {
   GOOGLE_CLIENT_EMAIL,
   GOOGLE_PRIVATE_KEY,
@@ -17,7 +15,17 @@ const {
   SHEET_AUDIT_RANGE = "AdminAudit!A:G",
 } = process.env;
 
-function getAuth() {
+export const RANGES = {
+  USERS: SHEET_USERS_RANGE,
+  LOGS: SHEET_LOGS_RANGE,
+  SESSIONS: SHEET_SESSIONS_RANGE,
+  CREDITS: SHEET_CREDITS_RANGE,
+  DEPTS: SHEET_DEPTS_RANGE,
+  FLAGS: SHEET_FLAGS_RANGE,
+  AUDIT: SHEET_AUDIT_RANGE,
+};
+
+export function getAuth() {
   if (!GOOGLE_CLIENT_EMAIL || !GOOGLE_PRIVATE_KEY) {
     throw new Error("Missing GOOGLE_CLIENT_EMAIL / GOOGLE_PRIVATE_KEY");
   }
@@ -31,7 +39,7 @@ function getAuth() {
   });
 }
 
-export async function sheetsGetValues(range: string) {
+export async function sheetsGet(range: string) {
   if (!SHEET_ID) throw new Error("Missing SHEET_ID");
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
@@ -42,10 +50,9 @@ export async function sheetsGetValues(range: string) {
   });
   return res.data;
 }
-
-export async function sheetsGetValuesSafe(range: string) {
+export async function sheetsGetSafe(range: string) {
   try {
-    return await sheetsGetValues(range);
+    return await sheetsGet(range);
   } catch (e: any) {
     const code = e?.response?.status || e?.code;
     const msg = e?.response?.data?.error?.message || e?.message || "";
@@ -55,20 +62,7 @@ export async function sheetsGetValuesSafe(range: string) {
   }
 }
 
-async function ensureSheetTab(title: string) {
-  const auth = getAuth();
-  const sheets = google.sheets({ version: "v4", auth });
-  const ss = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID! });
-  const exists = ss.data.sheets?.some((s) => s.properties?.title === title);
-  if (!exists) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID!,
-      requestBody: { requests: [{ addSheet: { properties: { title } } }] },
-    });
-  }
-}
-
-export async function sheetsUpdateRow(a1Range: string, values: any[][]) {
+export async function sheetsUpdate(a1Range: string, values: any[][]) {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
   await sheets.spreadsheets.values.update({
@@ -78,10 +72,7 @@ export async function sheetsUpdateRow(a1Range: string, values: any[][]) {
     requestBody: { values },
   });
 }
-
 export async function sheetsAppend(a1Range: string, values: any[][]) {
-  const title = a1Range.split("!")[0].replace(/^'|'$/g, "");
-  await ensureSheetTab(title);
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
   await sheets.spreadsheets.values.append({
@@ -103,11 +94,30 @@ export function toObjects(values: any[][]) {
   });
 }
 
-// 0-based row → A1 range (เต็มแถว)
+export function toISODate(v: any): string {
+  if (!v && v !== 0) return "";
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    return "";
+  }
+  if (typeof v === "number") {
+    const ms = Math.round((v - 25569) * 86400 * 1000);
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return "";
+}
+
+export function sumBy<T>(arr: T[], pick: (x: T) => number) {
+  return arr.reduce((s, x) => s + (Number(pick(x)) || 0), 0);
+}
+
+// A1 row range helper
 export function a1RowRange(sheetName: string, rowIndex0: number, headerLen: number) {
   const start = rowIndex0 + 1;
   const end = rowIndex0 + 1;
-  const lastColLetter = (n: number) => {
+  const lastCol = (n: number) => {
     let s = "",
       x = n;
     while (x > 0) {
@@ -117,10 +127,10 @@ export function a1RowRange(sheetName: string, rowIndex0: number, headerLen: numb
     }
     return s;
   };
-  return `${sheetName}!A${start}:${lastColLetter(headerLen)}${end}`;
+  return `${sheetName}!A${start}:${lastCol(headerLen)}${end}`;
 }
 
-// ---- Drive ----
+// Drive
 export async function driveGetFileMeta(fileId: string) {
   const auth = getAuth();
   const drive = google.drive({ version: "v3", auth });
@@ -131,7 +141,6 @@ export async function driveGetFileMeta(fileId: string) {
   });
   return data;
 }
-
 export async function driveGetFileReadable(fileId: string) {
   const auth = getAuth();
   const drive = google.drive({ version: "v3", auth });
@@ -141,27 +150,11 @@ export async function driveGetFileReadable(fileId: string) {
   );
   return { stream: res.data as any, headers: res.headers as any };
 }
-
 export async function hashStreamMD5(stream: NodeJS.ReadableStream) {
-  const hash = crypto.createHash("md5");
+  const h = crypto.createHash("md5");
   return new Promise<string>((resolve, reject) => {
-    stream.on("data", (d) => hash.update(d));
-    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("data", (d) => h.update(d));
+    stream.on("end", () => resolve(h.digest("hex")));
     stream.on("error", reject);
   });
 }
-
-export function sumBy<T>(arr: T[], pick: (x: T) => number) {
-  return arr.reduce((s, x) => s + (Number(pick(x)) || 0), 0);
-}
-
-export {
-  SHEET_ID,
-  SHEET_USERS_RANGE,
-  SHEET_LOGS_RANGE,
-  SHEET_CREDITS_RANGE,
-  SHEET_SESSIONS_RANGE,
-  SHEET_FLAGS_RANGE,
-  SHEET_AUDIT_RANGE,
-  SHEET_DEPTS_RANGE,
-};

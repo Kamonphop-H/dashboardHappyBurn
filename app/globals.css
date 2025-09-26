@@ -3,6 +3,7 @@
 @import "tailwindcss";
 
 :root {
+  /* Colors */
   --nkt-primary: #00a19a;
   --nkt-primary-dark: #008078;
   --nkt-primary-light: #e6f7f6;
@@ -15,4 +16,8 @@
   --nkt-muted: #6b7280;
   --nkt-border: #e5e7eb;
   --nkt-bg: #f9fafb;
+
+  /* Fonts */
+  --font-inter: "Inter", sans-serif;
+  --font-sarabun: "Sarabun", sans-serif;
 }
